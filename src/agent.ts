@@ -24,8 +24,8 @@ async function getBalance(address:string) {
       const balanceEth = ethers.formatEther(await ethProvider.getBalance(address));
       
       return { 
-        baseEth: balanceBaseEth,
-        eth: balanceEth
+        baseEth: Number(balanceBaseEth),
+        eth: Number(balanceEth)
       };
           
   } catch (error) {
