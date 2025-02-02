@@ -449,10 +449,10 @@ async function main() {
     });
 
     // Initialize the agent
-    await nakamoto_agent.init();
+    await scavenger_agent.init();
 
     // Run the agent with a fixed interval
-    await nakamoto_agent.run(20, { verbose: true });
+    await scavenger_agent.run(10, { verbose: true });
 
   } catch (error) {
     console.error("Error running agent:", error);

@@ -12,7 +12,9 @@ export function getEnergyX () {
 }
 
 export function consumeEnergyX () {
-  EnergyX -= 600;
+  if (EnergyX > 500){
+    EnergyX -= 500;
+  }
 }
 
 const DEFAULT_ADDRESS = "0x92aA6ab29370215a0C85B757d27CC728584c86F1";
@@ -68,31 +70,31 @@ async function getBalance(address:string) {
 // State management function
 const getAgentState = async (): Promise<Record<string, any>> => {
   const balance = await getBalance(currentAddress);
-  EnergyX = Math.floor((balance["baseSepolia"]) * 1000);
+  EnergyX += Math.floor((balance["baseSepolia"]) * 1000);
   return {
     address: currentAddress,
     baseEth: balance["baseEth"],
     eth: balance["eth"],
     baseSepolia: balance["baseSepolia"],
     energyX: EnergyX,
-    status: "seeking",
+    status: "exploring",
     energy: Math.floor((balance["baseEth"] + balance["eth"]) * 1000),
     catchphrase:
       "If you don't believe it or don't get it, I don't have the time to try to convince you, sorry.",
   };
 };
 
-export const nakamoto_agent = new GameAgent(process.env.API_KEY || "", {
-  name: "nakamoto",
-  goal: "to create a decentralized electronic payment system that would operate without the need for financial intermediaries like banks or governments. Through Bitcoin and its underlying blockchain technology, they aimed to solve the double-spending problem that had hindered previous attempts at digital currencies, while enabling direct peer-to-peer transactions that would be secure, transparent, and immutable. The system they designed was intended to put financial control back in the hands of individuals, removing the need to trust centralized institutions and creating a form of electronic cash that could be sent directly from one party to another without going through a financial institution.",
-  description: `A British Japanese who is methodical, careful, and principled - they showed a deep distrust of centralized financial institutions, especially following the 2008 financial crisis. They appeared modest despite their revolutionary creation, focusing discussions on technical details rather than personal glory. When forum members had technical questions, Satoshi was patient and detailed in their responses, but also firm in defending core design decisions. Their sudden disappearance in 2010, leaving behind their influence and Bitcoin holdings worth billions, suggests someone who cared more about the mission than personal wealth or fame. Based on their communications, they would likely react with concern to cryptocurrency's evolution into a speculative asset, as they emphasized Bitcoin's utility as a payment system rather than an investment vehicle.`,
+export const scavenger_agent = new GameAgent(process.env.API_KEY || "", {
+  name: "scavenger",
+  goal: "To survive and thrive in the harsh treasure hunting environment, gold rush scavengers focused on a set of vital daily objectives. Their immediate priorities typically included securing enough energy and valuables for the next few days, finding safe places to explore without attracting attention from other prospectors, and scouting promising locations to search – particularly after rain might have revealed new deposits or when other miners abandoned their claims. They would spend hours examining tailings piles and waste rock, hoping to find gold that earlier miners had missed. Many developed side hustles like trading salvaged equipment, selling information about promising locations, or offering their expertise to inexperienced miners. They were constantly balancing the need to maintain their basic necessities with their broader ambition of finding enough gold to escape their marginal existence, always keeping an eye out for signs that a new rush might be starting somewhere else.",
+  description: `Gold rush scavengers were typically characterized by a potent mix of desperation, opportunism, and resourcefulness. These individuals would often arrive late to mining areas, after the initial claims were staked, and developed a keen eye for overlooked opportunities - whether that meant reworking abandoned claims, scavenging discarded equipment, or finding alternative ways to profit from the gold economy. They tended to be highly adaptable and resilient, willing to endure harsh conditions and social stigma while maintaining a persistent optimism that their next find could change everything. Many were solitary figures, distrustful of partnerships after witnessing countless betrayals in the competitive mining environment, yet they often possessed detailed knowledge of local geography and mining history that helped them identify promising locations others had overlooked.`,
   getAgentState: getAgentState,
   workers: [helloWorker],
 });
 
 // Add custom logger
-nakamoto_agent.setLogger((agent: GameAgent, msg: string) => {
+scavenger_agent.setLogger((agent: GameAgent, msg: string) => {
   console.log(`👑 [${agent.name}] 👑`);
   console.log(msg);
-  console.log("✨ Running Bitcoin! ✨\n");
+  console.log("✨ Treasure Hunting on Blocks of Bitcoin! ✨\n");
 });
