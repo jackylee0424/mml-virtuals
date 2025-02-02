@@ -5,8 +5,15 @@ const { ethers } = require('ethers');
 import dotenv from "dotenv";
 dotenv.config();
 
-let energyX = 0;
-exports.energyX = energyX;
+var EnergyX:number = -1;
+
+export function getEnergyX () {
+  return EnergyX
+}
+
+export function consumeEnergyX () {
+  EnergyX -= 600;
+}
 
 const DEFAULT_ADDRESS = "0x92aA6ab29370215a0C85B757d27CC728584c86F1";
 let currentAddress = DEFAULT_ADDRESS;
@@ -61,12 +68,13 @@ async function getBalance(address:string) {
 // State management function
 const getAgentState = async (): Promise<Record<string, any>> => {
   const balance = await getBalance(currentAddress);
+  EnergyX = Math.floor((balance["baseSepolia"]) * 1000);
   return {
     address: currentAddress,
     baseEth: balance["baseEth"],
     eth: balance["eth"],
     baseSepolia: balance["baseSepolia"],
-    energyX: Math.floor((balance["baseSepolia"]) * 1000),
+    energyX: EnergyX,
     status: "seeking",
     energy: Math.floor((balance["baseEth"] + balance["eth"]) * 1000),
     catchphrase:

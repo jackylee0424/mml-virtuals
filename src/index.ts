@@ -1,8 +1,9 @@
-import { nakamoto_agent, generateNewCdpAddress } from "./agent";
+import { nakamoto_agent, generateNewCdpAddress, getEnergyX, consumeEnergyX } from "./agent";
 import type { Page } from 'puppeteer';
 import { config } from 'dotenv';
 const puppeteer = require("puppeteer");
 const path = require("path");
+
 
 config();
 
@@ -81,7 +82,7 @@ async function startJumpCelebration() {
   
   isJumping = true;
   let jumpCount = 0;
-  const maxJumps = 20; // Jump for 20 seconds (one jump per second)
+  const maxJumps = 5; // Jump for 20 seconds (one jump per second)
   
   const jumpInterval = setInterval(async () => {
     if (jumpCount >= maxJumps) {
@@ -115,25 +116,25 @@ function updateChat(data: any, type: ChatType = 'npc') {
     lastMessages = new Set(values.slice(-50));
   }
 
-  // Check for ETH balance and trigger celebration
-  const currentBaseEth = data.baseEth ? parseFloat(data.baseEth) : 0;
-  const currentEth = data.eth ? parseFloat(data.eth) : 0;
+  // // Check for ETH balance and trigger celebration
+  // const currentBaseEth = data.baseEth ? parseFloat(data.baseEth) : 0;
+  // const currentEth = data.eth ? parseFloat(data.eth) : 0;
   
-  // Trigger jump if:
-  // 1. First update and either balance is >= 0.001
-  // 2. Either balance changed and new value is >= 0.001
-  if ((isFirstUpdate && (currentBaseEth >= 0.001 || currentEth >= 0.001)) ||
-      (!isFirstUpdate && (
-        (currentBaseEth !== lastBaseEth && currentBaseEth >= 0.001) ||
-        (currentEth !== lastEth && currentEth >= 0.001)
-      ))) {
-    startJumpCelebration();
-  }
+  // // Trigger jump if:
+  // // 1. First update and either balance is >= 0.001
+  // // 2. Either balance changed and new value is >= 0.001
+  // if ((isFirstUpdate && (currentBaseEth >= 0.001 || currentEth >= 0.001)) ||
+  //     (!isFirstUpdate && (
+  //       (currentBaseEth !== lastBaseEth && currentBaseEth >= 0.001) ||
+  //       (currentEth !== lastEth && currentEth >= 0.001)
+  //     ))) {
+  //   startJumpCelebration();
+  // }
 
-  // Update stored values
-  lastBaseEth = currentBaseEth;
-  lastEth = currentEth;
-  isFirstUpdate = false;
+  // // Update stored values
+  // lastBaseEth = currentBaseEth;
+  // lastEth = currentEth;
+  // isFirstUpdate = false;
 
   chatPage.evaluate((d, t) => {
     (window as any).updateChat(d, t);
@@ -210,7 +211,12 @@ async function main() {
         const randomIndex = Math.floor(Math.random() * array.length);
         const randomElement = array[randomIndex];
         await gamePage.keyboard.down(randomElement);
-
+        
+        if (getEnergyX() > 100) {
+          console.log("energyX", getEnergyX())
+          startJumpCelebration();
+          consumeEnergyX();
+        }
         setTimeout(async () => {
           await gamePage.keyboard.up(randomElement);
         }, 1000);
