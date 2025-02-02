@@ -140,6 +140,7 @@
             background: #fff;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             position: relative;
+            max-width: 80%;
         }
         .message.npc {
             background: #f8f9fa;
@@ -151,6 +152,7 @@
             margin-right: 20px;
             font-style: italic;
             color: #6c757d;
+            margin-left: auto;
         }
         .message.greeting {
             background: #d1e7dd;
@@ -166,6 +168,8 @@
             background: #fff3cd;
             color: #664d03;
             border-left: 4px solid #ffc107;
+            margin-left: auto;
+            max-width: 60%;
         }
         .message pre {
             margin: 0;
@@ -173,67 +177,43 @@
             font-family: 'Consolas', monospace;
             font-size: 14px;
         }
-        .message-content {
-            padding: 15px 20px;
-            border-radius: 18px;
-            position: relative;
-            line-height: 1.6;
-        }
-        .npc {
-            align-self: flex-start;
-        }
-        .npc .message-content {
-            background: white;
-            border-bottom-left-radius: 4px;
-            margin-left: 8px;
-        }
-        .npc .message-content:before {
-            content: '';
-            position: absolute;
-            left: -8px;
-            bottom: 0;
-            width: 20px;
-            height: 20px;
-            background: linear-gradient(45deg, white 50%, transparent 50%);
-            border-bottom-right-radius: 20px;
-        }
-        .system {
-            align-self: flex-end;
-        }
-        .system .message-content {
-            background: #0084ff;
-            color: white;
-            border-bottom-right-radius: 4px;
-            margin-right: 8px;
-        }
-        .system .message-content:after {
-            content: '';
-            position: absolute;
-            right: -8px;
-            bottom: 0;
-            width: 20px;
-            height: 20px;
-            background: linear-gradient(-45deg, #0084ff 50%, transparent 50%);
-            border-bottom-left-radius: 20px;
-        }
         .time {
-            font-size: 11px;
-            color: #666;
-            margin: 0 8px;
-            align-self: flex-end;
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+            text-align: right;
         }
         .type {
-            display: inline-flex;
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 5px;
+            display: flex;
             align-items: center;
-            gap: 6px;
-            font-weight: 600;
-            color: #1a237e;
-            margin-bottom: 4px;
-            font-size: 13px;
-            margin-left: 8px;
+            gap: 5px;
         }
         .type-icon {
-            font-size: 18px;
+            font-size: 16px;
+        }
+        .plan-section {
+            margin: 10px 0;
+            padding: 10px;
+            background: #fff;
+            border-radius: 4px;
+        }
+        .plan-title {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .plan-item {
+            margin: 5px 0;
+            padding: 5px 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            color: #495057;
         }
         .content-state {
             background: #e3f2fd !important;
@@ -254,30 +234,6 @@
         .content-greeting {
             background: #fce4ec !important;
             border: 1px solid #f8bbd0;
-        }
-        .plan-section {
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px solid rgba(0,0,0,0.1);
-        }
-        .plan-title {
-            font-weight: 600;
-            color: #2e7d32;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .plan-item {
-            padding-left: 20px;
-            position: relative;
-            margin-bottom: 4px;
-        }
-        .plan-item:before {
-            content: "•";
-            position: absolute;
-            left: 8px;
-            color: #2e7d32;
         }
         pre {
             white-space: pre-wrap;
@@ -348,6 +304,72 @@
         const addressElement = document.getElementById('address');
         let qrCode = null;
 
+        function formatPlan(plan) {
+            return plan.map(item => `<div class="plan-item">${item}</div>`).join('');
+        }
+
+        function formatContent(data) {
+            let formatted = '';
+            const time = new Date().toLocaleTimeString();
+            
+            // Handle high-level plan
+            if (data.hlp) {
+                formatted += '<div class="type"><span class="type-icon">🎯</span>Planning</div>';
+                formatted += '<div class="plan-section">';
+                formatted += '<div class="plan-title">📋 Plan:</div>';
+                formatted += formatPlan(data.hlp.plan);
+                
+                if (data.hlp.plan_reasoning) {
+                    formatted += '<div class="plan-section">';
+                    formatted += '<div class="plan-title">💭 Reasoning:</div>';
+                    formatted += `<div class="plan-item">${data.hlp.plan_reasoning}</div>`;
+                    formatted += '</div>';
+                }
+                
+                if (data.hlp.observation_reflection) {
+                    formatted += '<div class="plan-section">';
+                    formatted += '<div class="plan-title">🤔 Reflection:</div>';
+                    formatted += `<div class="plan-item">${data.hlp.observation_reflection}</div>`;
+                    formatted += '</div>';
+                }
+                formatted += '</div>';
+            }
+            
+            // Handle current task
+            if (data.current_task) {
+                formatted += '<div class="type"><span class="type-icon">📌</span>Current Task</div>';
+                formatted += '<div class="plan-section">';
+                formatted += `<div class="plan-item">${data.current_task.task}</div>`;
+                if (data.current_task.task_reasoning) {
+                    formatted += '<div class="plan-title">🎯 Task Reasoning:</div>';
+                    formatted += `<div class="plan-item">${data.current_task.task_reasoning}</div>`;
+                }
+                formatted += '</div>';
+            }
+            
+            // Handle state updates
+            if (data.status || data.address) {
+                formatted += '<div class="type"><span class="type-icon">🔄</span>State</div>';
+                formatted += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            
+            // Handle messages
+            if (data.message) {
+                if (data.type === 'status') {
+                    formatted = data.message;
+                } else if (data.type === 'greeting') {
+                    formatted = `<div class="type"><span class="type-icon">👋</span>Greeting</div>${data.message}`;
+                } else if (data.type === 'action') {
+                    formatted = `<div class="type"><span class="type-icon">🎬</span>Action</div>${data.message}`;
+                } else {
+                    formatted = `<div class="type"><span class="type-icon">💬</span>Message</div>${data.message}`;
+                }
+            }
+            
+            formatted += `<div class="time">${time}</div>`;
+            return formatted;
+        }
+        
         // Make updateChat globally available
         window.updateChat = function(data, type = 'npc') {
             if (typeof data !== 'object') return;
@@ -357,18 +379,7 @@
                 updateAddress(data.address, data.eth, data.baseEth);
             }
             
-            let formatted = '';
-            const time = new Date().toLocaleTimeString();
-            
-            if (data.type === 'greeting') {
-                formatted = `<div class="message greeting">${data.message}<div class="time">${time}</div></div>`;
-            } else if (data.type === 'action') {
-                formatted = `<div class="message action">${data.message}<div class="time">${time}</div></div>`;
-            } else if (data.type === 'status') {
-                formatted = `<div class="message status">${data.message}<div class="time">${time}</div></div>`;
-            } else {
-                formatted = `<div class="message ${type}"><pre>${JSON.stringify(data, null, 2)}</pre><div class="time">${time}</div></div>`;
-            }
+            const formatted = `<div class="message ${type}">${formatContent(data)}</div>`;
             
             const chatBox = document.getElementById('messages');
             if (chatBox) {
