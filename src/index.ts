@@ -5,6 +5,7 @@ import { config } from 'dotenv';
 const puppeteer = require("puppeteer");
 const path = require("path");
 
+
 config();
 
 // Define types for our chat data
@@ -181,10 +182,10 @@ function updateChat(data: any, type: ChatType = 'npc') {
     startJumpCelebration();
   }
 
-  // Update stored values
-  lastBaseEth = currentBaseEth;
-  lastEth = currentEth;
-  isFirstUpdate = false;
+  // // Update stored values
+  // lastBaseEth = currentBaseEth;
+  // lastEth = currentEth;
+  // isFirstUpdate = false;
 
   // Update chat with state info
   chatPage.evaluate((d, t) => {
