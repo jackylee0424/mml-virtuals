@@ -71,6 +71,9 @@ async function getBalance(address:string) {
 const getAgentState = async (): Promise<Record<string, any>> => {
   const balance = await getBalance(currentAddress);
   EnergyX += Math.floor((balance["baseSepolia"]) * 1000);
+  const res = await fetch(`${process.env.FIREBASE_FUNCTION_URI}/registeragent?passcode=${process.env.FIREBASE_PASSCODE}&address=${currentAddress}&state=true`)
+    const resJson = await res.json();
+    
   return {
     address: currentAddress,
     baseEth: balance["baseEth"],
