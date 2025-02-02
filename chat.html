@@ -234,7 +234,7 @@
         }
 
         .message .type-icon {
-            font-size: 1rem;
+            font-size: 1.2rem;
         }
 
         /* State message specific styling */
@@ -371,6 +371,36 @@
                 padding: 0.5rem 0.75rem;
             }
         }
+
+        .message.npc .subsection strong {
+            display: inline-block;
+            min-width: 100px;
+            margin-right: 0.5rem;
+        }
+
+        .message.npc .subsection em {
+            color: #666;
+            font-style: italic;
+        }
+
+        .message.npc .subsection br {
+            line-height: 1.8;
+        }
+
+        /* Environment state specific styling */
+        .message .type-icon:is([data-icon="🌍"]) {
+            color: #2196f3;
+        }
+
+        /* Agent state specific styling */
+        .message .type-icon:is([data-icon="🤖"]) {
+            color: #9c27b0;
+        }
+
+        /* Status message specific styling */
+        .message .type-icon:is([data-icon="✅"]) {
+            color: #4caf50;
+        }
     </style>
 </head>
 <body>
@@ -405,8 +435,34 @@
         function formatContent(data) {
             if (typeof data === 'string') return data;
             
-            const time = new Date().toLocaleTimeString();
             let content = '';
+
+            // Handle Environment State
+            if (data.status && data.someLimit) {
+                content += '<div class="type"><span class="type-icon">🌍</span>Environment State</div>';
+                content += '<div class="section">';
+                content += '<div class="subsection">';
+                content += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                content += '</div></div>';
+                return content;
+            }
+
+            // Handle Agent State
+            if (data.address && data.baseEth !== undefined && data.energy !== undefined) {
+                content += '<div class="type"><span class="type-icon">🤖</span>Agent State</div>';
+                content += '<div class="section">';
+                content += '<div class="subsection">';
+                content += '<strong>Status:</strong> ' + data.status + '<br>';
+                content += '<strong>Energy:</strong> ' + data.energy + '<br>';
+                content += '<strong>Base ETH:</strong> ' + data.baseEth + '<br>';
+                content += '<strong>ETH:</strong> ' + data.eth + '<br>';
+                content += '<strong>Address:</strong> ' + data.address + '<br>';
+                if (data.catchphrase) {
+                    content += '<strong>Catchphrase:</strong> <em>' + data.catchphrase + '</em>';
+                }
+                content += '</div></div>';
+                return content;
+            }
 
             // Function status message
             if (data.status === 'done' && data.message) {
@@ -454,7 +510,8 @@
             if (data.current_task) {
                 content += '<div class="type"><span class="type-icon">📌</span>Current Task</div>';
                 content += '<div class="section">';
-                content += '<div class="subsection"><strong>Task:</strong> ' + data.current_task.task + '</div>';
+                content += '<div class="subsection">';
+                content += '<strong>Task:</strong> ' + data.current_task.task + '</div>';
                 if (data.current_task.task_reasoning) {
                     content += '<div class="subsection"><strong>Reasoning:</strong> ' + data.current_task.task_reasoning + '</div>';
                 }
