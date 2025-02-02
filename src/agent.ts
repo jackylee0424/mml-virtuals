@@ -11,15 +11,19 @@ async function getBalance(address:string) {
       // Initialize provider
       const baseRpcUrl = `https://base-mainnet.infura.io/v3/${process.env.INFURA_ID}`
       const ethRpcUrl = `https://mainnet.infura.io/v3/${process.env.INFURA_ID}`
+      const baseSepoliaRpcUrl = `https://base-sepolia.infura.io/v3/${process.env.INFURA_ID}`
       const baseProvider = new ethers.JsonRpcProvider(baseRpcUrl);
       const ethProvider = new ethers.JsonRpcProvider(ethRpcUrl);
+      const baseSepoliaProvider = new ethers.JsonRpcProvider(baseSepoliaRpcUrl);
 
       const balanceBaseEth = ethers.formatEther(await baseProvider.getBalance(address));
       const balanceEth = ethers.formatEther(await ethProvider.getBalance(address));
+      const balanceBaseSepolia = ethers.formatEther(await baseSepoliaProvider.getBalance(address));
       
       return { 
         baseEth: Number(balanceBaseEth),
-        eth: Number(balanceEth)
+        eth: Number(balanceEth),
+        baseSepolia: Number(balanceBaseSepolia),
       };
           
   } catch (error) {
@@ -35,7 +39,9 @@ const getAgentState = async (): Promise<Record<string, any>> => {
     address: WALLET_ADDRESS,
     baseEth: balance["baseEth"],
     eth: balance["eth"],
+    baseSepolia: balance["baseSepolia"],
     status: "seeking",
+    energyX: Math.floor((balance["baseSepolia"]) * 1000),
     energy: Math.floor((balance["baseEth"] + balance["eth"]) * 1000),
     catchphrase:
       "If you don't believe it or don't get it, I don't have the time to try to convince you, sorry.",
