@@ -135,11 +135,21 @@ async function main() {
     // Launch a headless browser
     const browser = await puppeteer.launch({
       headless: false,
-      args: ["--no-sandbox"]
+      args: [
+        "--no-sandbox",
+        "--start-maximized", // Start with maximized windows
+        "--window-size=1920,1080" // Set default window size to 1080p
+      ]
     });
 
     // Open game window
     const gamePage = await browser.newPage();
+    // Set viewport to 1080p
+    await gamePage.setViewport({
+      width: 1920,
+      height: 1080,
+      deviceScaleFactor: 1
+    });
     await gamePage.goto("https://nextlevel.blocksofbitcoin.xyz");
 
     // Set up random movement
@@ -156,6 +166,12 @@ async function main() {
 
     // Open chat interface in a separate window
     chatPage = await browser.newPage();
+    // Set viewport to 1080p
+    await chatPage.setViewport({
+      width: 1920,
+      height: 1080,
+      deviceScaleFactor: 1
+    });
     await chatPage.goto('file://' + path.resolve('chat.html'));
 
     // Initialize the agent
