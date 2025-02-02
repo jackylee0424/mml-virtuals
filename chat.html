@@ -407,6 +407,27 @@
             
             const time = new Date().toLocaleTimeString();
             let content = '';
+
+            // Function status message
+            if (data.status === 'done' && data.message) {
+                content += '<div class="type"><span class="type-icon">✅</span>Status</div>';
+                content += data.message;
+                return content;
+            }
+            
+            // Handle greeting messages
+            if (data.greeting && data.greeting.value) {
+                content += '<div class="type"><span class="type-icon">👋</span>Greeting</div>';
+                content += data.greeting.value;
+                return content;
+            }
+
+            // Handle action messages
+            if (data.type === 'action' || (data.action && data.action.type === 'action')) {
+                content += '<div class="type"><span class="type-icon">🎬</span>Action</div>';
+                content += data.message || data.action.message;
+                return content;
+            }
             
             // Handle HLP (High Level Planning)
             if (data.hlp) {
@@ -437,37 +458,27 @@
                 if (data.current_task.task_reasoning) {
                     content += '<div class="subsection"><strong>Reasoning:</strong> ' + data.current_task.task_reasoning + '</div>';
                 }
-                if (data.current_task.llp) {
-                    content += '<div class="subsection"><strong>Low Level Plan:</strong>';
-                    if (data.current_task.llp.plan && data.current_task.llp.plan.length) {
-                        content += '<ul>';
-                        data.current_task.llp.plan.forEach(step => content += '<li>' + step + '</li>');
-                        content += '</ul>';
-                    }
-                    content += '</div>';
+                if (data.current_task.llp && data.current_task.llp.plan) {
+                    content += '<div class="subsection"><strong>Low Level Plan:</strong><ul>';
+                    data.current_task.llp.plan.forEach(step => content += '<li>' + step + '</li>');
+                    content += '</ul></div>';
                 }
                 content += '</div>';
             }
-            
-            // Handle other message types
+
+            // Handle state messages
             if (data.type === 'state') {
                 content += '<div class="type"><span class="type-icon">🔄</span>State Update</div>';
                 content += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
-            } else if (data.type === 'action') {
-                content += '<div class="type"><span class="type-icon">🎬</span>Action</div>';
-                content += data.message;
-            } else if (data.type === 'greeting') {
-                content += '<div class="type"><span class="type-icon">👋</span>Greeting</div>';
-                content += data.message;
-            } else if (data.message && !data.hlp && !data.current_task) {
+            }
+
+            // If no specific type matched but we have a message
+            if (!content && data.message) {
                 content += '<div class="type"><span class="type-icon">💬</span>Message</div>';
                 content += data.message;
             }
             
-            // Add timestamp
-            content += `<div class="time">${time}</div>`;
-            
-            return content;
+            return content || JSON.stringify(data, null, 2);
         }
 
         function generateQRCode(address) {
