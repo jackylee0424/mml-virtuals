@@ -1,4 +1,4 @@
-import { nakamoto_agent, generateNewCdpAddress, getEnergyX, consumeEnergyX } from "./agent";
+import { scavenger_agent, generateNewCdpAddress, getEnergyX, consumeEnergyX } from "./agent";
 import type { Page } from 'puppeteer';
 import { config } from 'dotenv';
 const puppeteer = require("puppeteer");
@@ -82,7 +82,7 @@ async function startJumpCelebration() {
   
   isJumping = true;
   let jumpCount = 0;
-  const maxJumps = 5; // Jump for 20 seconds (one jump per second)
+  const maxJumps = 10; // Jump for 20 seconds (one jump per second)
   
   const jumpInterval = setInterval(async () => {
     if (jumpCount >= maxJumps) {
@@ -99,7 +99,7 @@ async function startJumpCelebration() {
       clearInterval(jumpInterval);
       isJumping = false;
     }
-  }, 1000); // Jump every second
+  }, 500); // Jump every second
 }
 
 function updateChat(data: any, type: ChatType = 'npc') {
@@ -212,7 +212,7 @@ async function main() {
         const randomElement = array[randomIndex];
         await gamePage.keyboard.down(randomElement);
         
-        if (getEnergyX() > 100) {
+        if (getEnergyX() > 500) {
           console.log("energyX", getEnergyX())
           startJumpCelebration();
           consumeEnergyX();
@@ -249,10 +249,10 @@ async function main() {
     await chatPage.goto('file://' + path.resolve('chat.html'));
 
     // Initialize the agent
-    await nakamoto_agent.init();
+    await scavenger_agent.init();
 
     // Run the agent with a fixed interval
-    await nakamoto_agent.run(20, { verbose: true });
+    await scavenger_agent.run(10, { verbose: true });
 
   } catch (error) {
     console.error("Error running agent:", error);
