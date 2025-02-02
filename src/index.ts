@@ -18,6 +18,8 @@ type ChatData = {
   catchphrase?: string;
   message?: string;
   task?: string;
+  baseEth?: string;
+  eth?: string;
   [key: string]: any; // Allow other properties
 };
 
@@ -25,10 +27,15 @@ type ChatType = 'npc' | 'system';
 
 // Keep track of last messages to prevent duplicates
 let lastMessages: Set<string> = new Set();
+let lastBaseEth: number = 0;
+let lastEth: number = 0;
+let isFirstUpdate: boolean = true;
 
 // Custom console.log to capture agent output
 const originalLog = console.log;
 let chatPage: Page;
+let gamePage: Page;
+let isJumping = false;
 
 function extractJSON(str: string): string {
   // Find the first { and last } in the string
@@ -69,6 +76,31 @@ function cleanAndParseJSON(str: string): any {
   }
 }
 
+async function startJumpCelebration() {
+  if (isJumping || !gamePage) return;
+  
+  isJumping = true;
+  let jumpCount = 0;
+  const maxJumps = 20; // Jump for 20 seconds (one jump per second)
+  
+  const jumpInterval = setInterval(async () => {
+    if (jumpCount >= maxJumps) {
+      clearInterval(jumpInterval);
+      isJumping = false;
+      return;
+    }
+    
+    try {
+      await gamePage.keyboard.press('Space');
+      jumpCount++;
+    } catch (e) {
+      console.error('Error during jump:', e);
+      clearInterval(jumpInterval);
+      isJumping = false;
+    }
+  }, 1000); // Jump every second
+}
+
 function updateChat(data: any, type: ChatType = 'npc') {
   if (!chatPage) return;
 
@@ -82,6 +114,26 @@ function updateChat(data: any, type: ChatType = 'npc') {
     const values = Array.from(lastMessages.values());
     lastMessages = new Set(values.slice(-50));
   }
+
+  // Check for ETH balance and trigger celebration
+  const currentBaseEth = data.baseEth ? parseFloat(data.baseEth) : 0;
+  const currentEth = data.eth ? parseFloat(data.eth) : 0;
+  
+  // Trigger jump if:
+  // 1. First update and either balance is >= 0.001
+  // 2. Either balance changed and new value is >= 0.001
+  if ((isFirstUpdate && (currentBaseEth >= 0.001 || currentEth >= 0.001)) ||
+      (!isFirstUpdate && (
+        (currentBaseEth !== lastBaseEth && currentBaseEth >= 0.001) ||
+        (currentEth !== lastEth && currentEth >= 0.001)
+      ))) {
+    startJumpCelebration();
+  }
+
+  // Update stored values
+  lastBaseEth = currentBaseEth;
+  lastEth = currentEth;
+  isFirstUpdate = false;
 
   chatPage.evaluate((d, t) => {
     (window as any).updateChat(d, t);
@@ -137,14 +189,13 @@ async function main() {
       headless: false,
       args: [
         "--no-sandbox",
-        "--start-maximized", // Start with maximized windows
-        "--window-size=1920,1080" // Set default window size to 1080p
+        "--start-maximized",
+        "--window-size=1920,1080"
       ]
     });
 
     // Open game window
-    const gamePage = await browser.newPage();
-    // Set viewport to 1080p
+    gamePage = await browser.newPage();
     await gamePage.setViewport({
       width: 1920,
       height: 1080,
@@ -153,20 +204,21 @@ async function main() {
     await gamePage.goto("https://nextlevel.blocksofbitcoin.xyz");
 
     // Set up random movement
-    const array = ["W", "A", "S", "D"];
+    const array = ["KeyW", "KeyA", "KeyS", "KeyD"] as const;
     setInterval(async () => {
-      const randomIndex = Math.floor(Math.random() * array.length);
-      const randomElement = array[randomIndex];
-      await gamePage.keyboard.down(randomElement);
+      if (!isJumping) {  // Only move if not jumping
+        const randomIndex = Math.floor(Math.random() * array.length);
+        const randomElement = array[randomIndex];
+        await gamePage.keyboard.down(randomElement);
 
-      setTimeout(async () => {
-        await gamePage.keyboard.up(randomElement);
-      }, 1000);
+        setTimeout(async () => {
+          await gamePage.keyboard.up(randomElement);
+        }, 1000);
+      }
     }, 2000);
 
     // Open chat interface in a separate window
     chatPage = await browser.newPage();
-    // Set viewport to 1080p
     await chatPage.setViewport({
       width: 1920,
       height: 1080,

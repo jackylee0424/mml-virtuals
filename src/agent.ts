@@ -1,16 +1,10 @@
 import { GameAgent } from "@virtuals-protocol/game";
 import { helloWorker, postTweetWorker } from "./worker";
-import { CdpWalletProvider } from "@coinbase/agentkit";
 const { ethers } = require('ethers');
 import dotenv from "dotenv";
 dotenv.config();
 
-// Configure CDP Wallet Provider
-const config = {
-  apiKeyName: process.env.CDP_API_KEY,
-  apiKeyPrivateKey: process.env.CDP_PKEY?.replace(/\\n/g, "\n"),
-  networkId: "base-mainnet",
-};
+const WALLET_ADDRESS = "0x92aA6ab29370215a0C85B757d27CC728584c86F1";
 
 async function getBalance(address:string) {
   try {
@@ -36,11 +30,9 @@ async function getBalance(address:string) {
 
 // State management function
 const getAgentState = async (): Promise<Record<string, any>> => {
-  const walletProvider = await CdpWalletProvider.configureWithWallet(config);
-  const ethAddress = walletProvider.getAddress();
-  const balance = await getBalance(ethAddress);
+  const balance = await getBalance(WALLET_ADDRESS);
   return {
-    address: ethAddress,
+    address: WALLET_ADDRESS,
     baseEth: balance["baseEth"],
     eth: balance["eth"],
     status: "seeking",

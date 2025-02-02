@@ -73,6 +73,39 @@
             padding: 2px 8px;
             border-radius: 12px;
         }
+        #energy-container {
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #energy-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            min-width: 60px;
+        }
+        #energy-bar {
+            flex-grow: 1;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        #energy-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            transition: width 0.3s ease-out;
+        }
+        #energy-percentage {
+            font-size: 12px;
+            color: #198754;
+            font-weight: 600;
+            min-width: 45px;
+            text-align: right;
+        }
         #address {
             font-family: 'Consolas', monospace;
             font-size: 14px;
@@ -259,6 +292,13 @@
                     <span id="address"></span>
                     <button class="copy-button" onclick="copyAddress()">Copy</button>
                 </div>
+                <div id="energy-container">
+                    <span id="energy-label">Energy</span>
+                    <div id="energy-bar">
+                        <div id="energy-fill"></div>
+                    </div>
+                    <span id="energy-percentage">0%</span>
+                </div>
             </div>
             <div id="qr-code"></div>
         </div>
@@ -280,6 +320,31 @@
             });
         }
 
+        function updateEnergyBar(eth) {
+            // Calculate energy percentage (0-100) based on ETH balance (0-0.01)
+            // For Base ETH or regular ETH
+            const energyPercentage = Math.min(100, Math.max(0, (eth / 0.01) * 100));
+            
+            // Update the energy bar fill
+            const energyFill = document.getElementById('energy-fill');
+            energyFill.style.width = `${energyPercentage}%`;
+            
+            // Update the percentage text
+            const energyText = document.getElementById('energy-percentage');
+            energyText.textContent = `${Math.round(energyPercentage)}%`;
+            
+            // Update colors based on percentage
+            if (energyPercentage === 0) {
+                energyFill.style.background = '#e9ecef';
+            } else if (energyPercentage < 30) {
+                energyFill.style.background = 'linear-gradient(90deg, #ff5722, #ff9800)';
+            } else if (energyPercentage < 70) {
+                energyFill.style.background = 'linear-gradient(90deg, #ffc107, #8bc34a)';
+            } else {
+                energyFill.style.background = 'linear-gradient(90deg, #4caf50, #8bc34a)';
+            }
+        }
+
         function updateAddress(address, eth = null) {
             if (address === currentAddress) return;
             currentAddress = address;
@@ -290,6 +355,7 @@
             // Update ETH balance if provided
             if (eth !== null) {
                 document.getElementById('eth-balance').textContent = `${eth} ETH`;
+                updateEnergyBar(parseFloat(eth));
             }
             
             // Update QR code
