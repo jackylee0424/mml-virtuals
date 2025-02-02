@@ -1,6 +1,7 @@
 import { GameAgent } from "@virtuals-protocol/game";
 import { helloWorker, postTweetWorker } from "./worker";
 import { CdpWalletProvider } from "@coinbase/agentkit";
+const { ethers } = require('ethers');
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -11,16 +12,39 @@ const config = {
   networkId: "base-mainnet",
 };
 
+async function getBalance(address:string) {
+  try {
+      // Initialize provider
+      const baseRpcUrl = `https://base-mainnet.infura.io/v3/${process.env.INFURA_ID}`
+      const ethRpcUrl = `https://mainnet.infura.io/v3/${process.env.INFURA_ID}`
+      const baseProvider = new ethers.JsonRpcProvider(baseRpcUrl);
+      const ethProvider = new ethers.JsonRpcProvider(ethRpcUrl);
+
+      const balanceBaseEth = ethers.formatEther(await baseProvider.getBalance(address));
+      const balanceEth = ethers.formatEther(await ethProvider.getBalance(address));
+      
+      return { 
+        baseEth: balanceBaseEth,
+        eth: balanceEth
+      };
+          
+  } catch (error) {
+      console.error('Error fetching ETH balance:', error);
+      throw error;
+  }
+}
+
 // State management function
 const getAgentState = async (): Promise<Record<string, any>> => {
   const walletProvider = await CdpWalletProvider.configureWithWallet(config);
+  const ethAddress = walletProvider.getAddress();
+  const balance = await getBalance(ethAddress);
   return {
-    address: walletProvider.getAddress(),
+    address: ethAddress,
+    baseEth: balance["baseEth"],
+    eth: balance["eth"],
     status: "seeking",
-    charisma: 100,
-    uniqueness: 100,
-    nerve: 100,
-    talent: 100,
+    energy: Math.floor((balance["baseEth"] + balance["eth"]) * 1000),
     catchphrase:
       "If you don't believe it or don't get it, I don't have the time to try to convince you, sorry.",
   };
