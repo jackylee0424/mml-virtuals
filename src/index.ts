@@ -6,8 +6,6 @@ const path = require("path");
 
 config();
 
-console.log(' [nakamoto] ');
-
 // Define types for our chat data
 type ChatData = {
   status?: string;
@@ -25,48 +23,110 @@ type ChatData = {
 
 type ChatType = 'npc' | 'system';
 
+// Keep track of last messages to prevent duplicates
+let lastMessages: Set<string> = new Set();
+
 // Custom console.log to capture agent output
 const originalLog = console.log;
 let chatPage: Page;
 
+function extractJSON(str: string): string {
+  // Find the first { and last } in the string
+  const start = str.indexOf('{');
+  const end = str.lastIndexOf('}');
+  
+  if (start === -1 || end === -1) return '';
+  
+  // Extract just the JSON part
+  return str.substring(start, end + 1);
+}
+
+function cleanAndParseJSON(str: string): any {
+  // Extract just the JSON part
+  str = extractJSON(str);
+  if (!str) return null;
+  
+  try {
+    return JSON.parse(str);
+  } catch (e) {
+    // If parsing fails, try to clean the string further
+    str = str.replace(/\\n/g, '\\n')
+             .replace(/\\'/g, "\\'")
+             .replace(/\\"/g, '\\"')
+             .replace(/\\&/g, '\\&')
+             .replace(/\\r/g, '\\r')
+             .replace(/\\t/g, '\\t')
+             .replace(/\\b/g, '\\b')
+             .replace(/\\f/g, '\\f')
+             .replace(/[\u0000-\u0019]+/g, ''); // Remove control characters
+    
+    try {
+      return JSON.parse(str);
+    } catch (e) {
+      console.error('Failed to parse after cleaning:', e);
+      return null;
+    }
+  }
+}
+
+function updateChat(data: any, type: ChatType = 'npc') {
+  if (!chatPage) return;
+
+  // Create a hash of the message to check for duplicates
+  const msgHash = JSON.stringify(data);
+  if (lastMessages.has(msgHash)) return;
+  
+  lastMessages.add(msgHash);
+  // Keep set size manageable
+  if (lastMessages.size > 100) {
+    const values = Array.from(lastMessages.values());
+    lastMessages = new Set(values.slice(-50));
+  }
+
+  chatPage.evaluate((d, t) => {
+    (window as any).updateChat(d, t);
+  }, data, type);
+}
+
 console.log = function(...args) {
   originalLog.apply(console, args);
   
-  if (chatPage) {
-    const message = args.join(' ');
-    
-    try {
-      // Parse different types of messages
-      if (message.includes('Environment State:')) {
-        const stateStr = message.split('Environment State:')[1].split('✨')[0].trim();
-        const state = JSON.parse(stateStr);
-        chatPage.evaluate((data) => {
-          (window as any).updateChat(data, 'npc');
-        }, state);
-      } 
-      else if (message.includes('Agent State:')) {
-        const stateStr = message.split('Agent State:')[1].split('✨')[0].trim();
-        const state = JSON.parse(stateStr);
-        chatPage.evaluate((data) => {
-          (window as any).updateChat(data, 'npc');
-        }, state);
-      }
-      else if (message.includes('Action State:')) {
-        const stateStr = message.split('Action State:')[1].split('✨')[0].trim();
-        const state = JSON.parse(stateStr);
-        chatPage.evaluate((data) => {
-          (window as any).updateChat(state, 'npc');
-        }, state);
-      }
-      else if (message.includes('Said Hello:')) {
-        const text = message.split('Said Hello:')[1].split('✨')[0].trim();
-        chatPage.evaluate((data) => {
-          (window as any).updateChat({ message: data }, 'npc');
-        }, text);
-      }
-    } catch (e) {
-      console.error('Failed to parse message:', e);
+  if (!chatPage) return;
+  
+  const message = args.join(' ');
+  
+  try {
+    // Handle different message types
+    if (message.includes('Environment State:')) {
+      const state = cleanAndParseJSON(message);
+      if (state) updateChat(state, 'npc');
     }
+    else if (message.includes('Agent State:')) {
+      const state = cleanAndParseJSON(message);
+      if (state) updateChat(state, 'npc');
+    }
+    else if (message.includes('Action State:')) {
+      const state = cleanAndParseJSON(message);
+      if (state) updateChat(state, 'npc');
+    }
+    else if (message.includes('Said Hello:')) {
+      const text = message.split('Said Hello:')[1].split('✨')[0].trim();
+      updateChat({ message: text, type: 'greeting' }, 'npc');
+    }
+    else if (message.includes('Performing function hello')) {
+      const args = cleanAndParseJSON(message);
+      if (args?.greeting?.value) {
+        updateChat({ message: args.greeting.value, type: 'action' }, 'npc');
+      }
+    }
+    else if (message.includes('Function status')) {
+      const status = message.split('Function status')[1].split(':')[0].trim();
+      if (status === '[done]') {
+        updateChat({ message: 'Action completed', type: 'status' }, 'system');
+      }
+    }
+  } catch (e) {
+    console.error('Failed to process message:', e);
   }
 };
 
@@ -98,37 +158,11 @@ async function main() {
     chatPage = await browser.newPage();
     await chatPage.goto('file://' + path.resolve('chat.html'));
 
-    // Function to update chat
-    const updateChat = async (data: ChatData, type: ChatType = 'npc') => {
-      await chatPage.evaluate((d: ChatData, t: ChatType) => {
-        (window as any).updateChat(d, t);
-      }, data, type);
-    };
-
     // Initialize the agent
     await nakamoto_agent.init();
 
-    // Extend the agent run options type
-    interface AgentRunOptions {
-      verbose: boolean;
-      onAction?: (data: ChatData) => Promise<void>;
-      onState?: (data: ChatData) => Promise<void>;
-      onTalk?: (data: ChatData) => Promise<void>;
-    }
-
     // Run the agent with a fixed interval
-    await nakamoto_agent.run(20, {
-      verbose: true,
-      onAction: async (data: ChatData) => {
-        await updateChat(data);
-      },
-      onState: async (data: ChatData) => {
-        await updateChat(data);
-      },
-      onTalk: async (data: ChatData) => {
-        await updateChat(data);
-      }
-    } as AgentRunOptions);
+    await nakamoto_agent.run(20, { verbose: true });
 
   } catch (error) {
     console.error("Error running agent:", error);
