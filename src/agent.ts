@@ -5,6 +5,9 @@ const { ethers } = require('ethers');
 import dotenv from "dotenv";
 dotenv.config();
 
+let energyX = 0;
+exports.energyX = energyX;
+
 const DEFAULT_ADDRESS = "0x92aA6ab29370215a0C85B757d27CC728584c86F1";
 let currentAddress = DEFAULT_ADDRESS;
 
@@ -33,15 +36,19 @@ async function getBalance(address:string) {
   try {
       // Initialize provider
       const baseRpcUrl = `https://base-mainnet.infura.io/v3/${process.env.INFURA_ID}`
+      const baseSepoliaRpcUrl = `https://base-sepolia.infura.io/v3/${process.env.INFURA_ID}`
       const ethRpcUrl = `https://mainnet.infura.io/v3/${process.env.INFURA_ID}`
       const baseProvider = new ethers.JsonRpcProvider(baseRpcUrl);
+      const baseSepoliaProvider = new ethers.JsonRpcProvider(baseSepoliaRpcUrl);
       const ethProvider = new ethers.JsonRpcProvider(ethRpcUrl);
 
       const balanceBaseEth = ethers.formatEther(await baseProvider.getBalance(address));
+      const balanceBaseSepolia = ethers.formatEther(await baseSepoliaProvider.getBalance(address));
       const balanceEth = ethers.formatEther(await ethProvider.getBalance(address));
       
       return { 
         baseEth: Number(balanceBaseEth),
+        baseSepolia: Number(balanceBaseSepolia),
         eth: Number(balanceEth)
       };
           
@@ -58,6 +65,8 @@ const getAgentState = async (): Promise<Record<string, any>> => {
     address: currentAddress,
     baseEth: balance["baseEth"],
     eth: balance["eth"],
+    baseSepolia: balance["baseSepolia"],
+    energyX: Math.floor((balance["baseSepolia"]) * 1000),
     status: "seeking",
     energy: Math.floor((balance["baseEth"] + balance["eth"]) * 1000),
     catchphrase:
