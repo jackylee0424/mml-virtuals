@@ -1,12 +1,16 @@
-import { nakamoto_agent, generateNewCdpAddress } from "./agent";
+import { scavenger_agent, generateNewCdpAddress } from "./agent";
 import { helloFunction } from './functions';
 import type { Page } from 'puppeteer';
 import { config } from 'dotenv';
 const puppeteer = require("puppeteer");
 const path = require("path");
-
+const fetch = require('node-fetch');
 
 config();
+
+// Firebase Function configuration
+const FIREBASE_FUNCTION_URI = process.env.FIREBASE_FUNCTION_URI;
+const FIREBASE_PASSCODE = process.env.FIREBASE_PASSCODE;
 
 // Define types for our chat data
 type ChatData = {
@@ -143,11 +147,9 @@ async function startJumpCelebration() {
   }, 500); // Jump every 500ms instead of 1000ms
 }
 
-function updateChat(data: any, type: ChatType = 'npc') {
-  if (!chatPage) return;
-
-  // Create a hash of the message to check for duplicates
+async function updateChat(data: any, type: ChatType = 'npc') {
   const msgHash = JSON.stringify(data);
+
   if (lastMessages.has(msgHash)) return;
   
   lastMessages.add(msgHash);
@@ -155,6 +157,30 @@ function updateChat(data: any, type: ChatType = 'npc') {
   if (lastMessages.size > 100) {
     const values = Array.from(lastMessages.values());
     lastMessages = new Set(values.slice(-50));
+  }
+
+  // Store message in Firebase
+  try {
+    const response = await fetch(FIREBASE_FUNCTION_URI, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Passcode': FIREBASE_PASSCODE
+      },
+      body: JSON.stringify({
+        data,
+        type,
+        timestamp: new Date(),
+        address: data.address || null,
+        baseEth: data.baseEth || null,
+        eth: data.eth || null
+      })
+    });
+    if (!response.ok) {
+      console.error('Error storing message in Firebase:', response.statusText);
+    }
+  } catch (error) {
+    console.error('Error storing message in Firebase:', error);
   }
 
   // Check for ETH balance and trigger celebration
@@ -182,10 +208,10 @@ function updateChat(data: any, type: ChatType = 'npc') {
     startJumpCelebration();
   }
 
-  // // Update stored values
-  // lastBaseEth = currentBaseEth;
-  // lastEth = currentEth;
-  // isFirstUpdate = false;
+  // Update stored values
+  lastBaseEth = currentBaseEth;
+  lastEth = currentEth;
+  isFirstUpdate = false;
 
   // Update chat with state info
   chatPage.evaluate((d, t) => {
