@@ -1,4 +1,5 @@
 import { nakamoto_agent, generateNewCdpAddress } from "./agent";
+import { helloFunction } from './functions';
 import type { Page } from 'puppeteer';
 import { config } from 'dotenv';
 const puppeteer = require("puppeteer");
@@ -392,6 +393,43 @@ async function main() {
       document.body.style.height = '100vh';
       document.body.style.margin = '0';
       document.body.style.padding = '0';
+    });
+
+    // Initialize chat window update function
+    await chatPage.exposeFunction('updateChat', async (data: any, type = 'npc') => {
+      await chatPage.evaluate((result, msgType) => {
+        const updateChat = (window as any).updateChat;
+        if (typeof updateChat === 'function') {
+          updateChat(result, msgType);
+        }
+      }, data, type);
+    });
+
+    // Expose the sendToAgent function to the chat window
+    await chatPage.exposeFunction('sendToAgent', async (message: string) => {
+        try {
+            // Directly use the helloFunction
+            const result = await helloFunction.executable({ greeting: message }, console.log);
+            console.log('Function executed:', result);
+            // Display the feedback in the chat
+            await chatPage.evaluate((feedbackMsg: string) => {
+                const chatBox = document.getElementById('messages');
+                if (chatBox) {
+                    chatBox.innerHTML += `<div class="message system">Feedback: ${feedbackMsg}</div>`;
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            }, result.feedback);
+        } catch (error) {
+            console.error('Error sending message:', error);
+            // Add error to chat
+            await chatPage.evaluate((errorMsg: string) => {
+                const chatBox = document.getElementById('messages');
+                if (chatBox) {
+                    chatBox.innerHTML += `<div class="message system">Error: ${errorMsg}</div>`;
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            }, error instanceof Error ? error.message : 'Unknown error occurred');
+        }
     });
 
     // Expose generateCdp function to the page
