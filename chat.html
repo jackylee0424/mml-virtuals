@@ -134,11 +134,44 @@
             background: #f5f5f5;
         }
         .message {
-            max-width: 80%;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            font-size: 16px;
+            margin: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .message.npc {
+            background: #f8f9fa;
+            margin-left: 20px;
+            border-left: 4px solid #0d6efd;
+        }
+        .message.system {
+            background: #e9ecef;
+            margin-right: 20px;
+            font-style: italic;
+            color: #6c757d;
+        }
+        .message.greeting {
+            background: #d1e7dd;
+            color: #0f5132;
+            border-left: 4px solid #198754;
+        }
+        .message.action {
+            background: #cff4fc;
+            color: #055160;
+            border-left: 4px solid #0dcaf0;
+        }
+        .message.status {
+            background: #fff3cd;
+            color: #664d03;
+            border-left: 4px solid #ffc107;
+        }
+        .message pre {
+            margin: 0;
+            white-space: pre-wrap;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
         }
         .message-content {
             padding: 15px 20px;
@@ -260,18 +293,21 @@
             color: #666;
             font-style: italic;
         }
-        .copy-button {
+        .button-container {
+            display: flex;
+            gap: 8px;
+        }
+        .copy-button, .generate-button {
             background: #e9ecef;
             border: none;
-            padding: 6px 12px;
             border-radius: 4px;
-            cursor: pointer;
+            padding: 4px 8px;
             font-size: 12px;
             color: #495057;
-            margin-left: 8px;
-            transition: all 0.2s;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
-        .copy-button:hover {
+        .copy-button:hover, .generate-button:hover {
             background: #dee2e6;
         }
     </style>
@@ -290,7 +326,10 @@
                 </div>
                 <div>
                     <span id="address"></span>
-                    <button class="copy-button" onclick="copyAddress()">Copy</button>
+                    <div class="button-container">
+                        <button class="copy-button" onclick="copyAddress()">Copy</button>
+                        <button class="generate-button" onclick="generateNewAddress()">Generate CDP</button>
+                    </div>
                 </div>
                 <div id="energy-container">
                     <span id="energy-label">Energy</span>
@@ -305,10 +344,47 @@
         <div id="messages"></div>
     </div>
     <script>
-        const messages = document.getElementById('messages');
-        const addressElement = document.getElementById('address');
         let currentAddress = '';
+        const addressElement = document.getElementById('address');
         let qrCode = null;
+
+        // Make updateChat globally available
+        window.updateChat = function(data, type = 'npc') {
+            if (typeof data !== 'object') return;
+            
+            // Check for address in state updates
+            if (data.address) {
+                updateAddress(data.address, data.eth, data.baseEth);
+            }
+            
+            let formatted = '';
+            const time = new Date().toLocaleTimeString();
+            
+            if (data.type === 'greeting') {
+                formatted = `<div class="message greeting">${data.message}<div class="time">${time}</div></div>`;
+            } else if (data.type === 'action') {
+                formatted = `<div class="message action">${data.message}<div class="time">${time}</div></div>`;
+            } else if (data.type === 'status') {
+                formatted = `<div class="message status">${data.message}<div class="time">${time}</div></div>`;
+            } else {
+                formatted = `<div class="message ${type}"><pre>${JSON.stringify(data, null, 2)}</pre><div class="time">${time}</div></div>`;
+            }
+            
+            const chatBox = document.getElementById('messages');
+            if (chatBox) {
+                chatBox.innerHTML += formatted;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        };
+
+        async function generateNewAddress() {
+            try {
+                // Call the generateCdp function that will be injected by Puppeteer
+                await window.generateCdp();
+            } catch (error) {
+                console.error('Error generating CDP address:', error);
+            }
+        }
 
         function copyAddress() {
             navigator.clipboard.writeText(currentAddress).then(() => {
@@ -371,118 +447,6 @@
             qrCode.clear();
             qrCode.makeCode("ethereum:" + address);
         }
-
-        function formatPlan(plan) {
-            return plan.map(item => `<div class="plan-item">${item}</div>`).join('');
-        }
-
-        function formatContent(content) {
-            if (typeof content !== 'object') return content;
-            
-            // Check for address in state updates
-            if (content.address) {
-                updateAddress(content.address, content.eth, content.baseEth);
-            }
-            
-            let formatted = '';
-            
-            // Handle high-level plan
-            if (content.hlp) {
-                formatted += '<div class="plan-section">';
-                formatted += '<div class="plan-title">📋 Plan:</div>';
-                formatted += formatPlan(content.hlp.plan);
-                
-                if (content.hlp.plan_reasoning) {
-                    formatted += '<div class="plan-section">';
-                    formatted += '<div class="plan-title">💭 Reasoning:</div>';
-                    formatted += `<div class="plan-item">${content.hlp.plan_reasoning}</div>`;
-                    formatted += '</div>';
-                }
-                
-                if (content.hlp.observation_reflection) {
-                    formatted += '<div class="plan-section">';
-                    formatted += '<div class="plan-title">🤔 Reflection:</div>';
-                    formatted += `<div class="plan-item">${content.hlp.observation_reflection}</div>`;
-                    formatted += '</div>';
-                }
-                formatted += '</div>';
-            }
-            
-            // Handle current task
-            if (content.current_task) {
-                formatted += '<div class="plan-section">';
-                formatted += '<div class="plan-title">📌 Current Task:</div>';
-                formatted += `<div class="plan-item">${content.current_task.task}</div>`;
-                if (content.current_task.task_reasoning) {
-                    formatted += '<div class="plan-title">🎯 Task Reasoning:</div>';
-                    formatted += `<div class="plan-item">${content.current_task.task_reasoning}</div>`;
-                }
-                formatted += '</div>';
-            }
-            
-            // Handle state updates
-            if (content.status || content.address) {
-                formatted += '<pre>' + JSON.stringify(content, null, 2) + '</pre>';
-            }
-            
-            // Handle messages
-            if (content.message) {
-                if (content.type === 'status') {
-                    formatted = `<div class="status">${content.message}</div>`;
-                } else {
-                    formatted = content.message;
-                }
-            }
-            
-            return formatted;
-        }
-
-        function getMessageType(content) {
-            if (content.status || content.address) return ['🔄 State', 'content-state'];
-            if (content.hlp) return ['🎯 Planning', 'content-plan'];
-            if (content.message) {
-                if (content.type === 'greeting') return ['👋 Greeting', 'content-greeting'];
-                if (content.type === 'action') return ['🎬 Action', 'content-action'];
-                if (content.type === 'status') return ['✅ Status', ''];
-                return ['💬 Message', 'content-talk'];
-            }
-            return ['📝 Info', ''];
-        }
-
-        function addMessage(content, type = 'npc') {
-            const div = document.createElement('div');
-            div.className = `message ${type}`;
-            
-            if (type === 'npc' && typeof content === 'object') {
-                const [typeText, contentClass] = getMessageType(content);
-                const typeDiv = document.createElement('div');
-                typeDiv.className = 'type';
-                typeDiv.innerHTML = `<span class="type-icon">${typeText.split(' ')[0]}</span>${typeText.split(' ')[1]}`;
-                div.appendChild(typeDiv);
-                
-                const messageContent = document.createElement('div');
-                messageContent.className = `message-content ${contentClass}`;
-                messageContent.innerHTML = formatContent(content);
-                div.appendChild(messageContent);
-            } else {
-                const messageContent = document.createElement('div');
-                messageContent.className = 'message-content';
-                messageContent.textContent = content;
-                div.appendChild(messageContent);
-            }
-
-            const time = document.createElement('div');
-            time.className = 'time';
-            time.textContent = new Date().toLocaleTimeString();
-            div.appendChild(time);
-
-            messages.appendChild(div);
-            messages.scrollTop = messages.scrollHeight;
-        }
-
-        window.updateChat = function(data, type = 'npc') {
-            addMessage(data, type);
-        };
     </script>
 </body>
 </html>

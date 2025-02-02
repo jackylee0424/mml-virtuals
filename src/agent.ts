@@ -1,29 +1,48 @@
 import { GameAgent } from "@virtuals-protocol/game";
 import { helloWorker, postTweetWorker } from "./worker";
+import { CdpWalletProvider } from "@coinbase/agentkit";
 const { ethers } = require('ethers');
 import dotenv from "dotenv";
 dotenv.config();
 
-const WALLET_ADDRESS = "0x92aA6ab29370215a0C85B757d27CC728584c86F1";
+const DEFAULT_ADDRESS = "0x92aA6ab29370215a0C85B757d27CC728584c86F1";
+let currentAddress = DEFAULT_ADDRESS;
+
+// Configure CDP Wallet Provider
+const config = {
+  apiKeyName: process.env.CDP_API_KEY,
+  apiKeyPrivateKey: process.env.CDP_PKEY?.replace(/\\n/g, "\n"),
+  networkId: "base-mainnet",
+};
+
+export async function generateNewCdpAddress(): Promise<{address: string, balance: any}> {
+  try {
+    const walletProvider = await CdpWalletProvider.configureWithWallet(config);
+    const newAddress = walletProvider.getAddress();
+    currentAddress = newAddress;
+    const balance = await getBalance(newAddress);
+    return { address: newAddress, balance };
+  } catch (error) {
+    console.error('Error generating CDP address:', error);
+    const balance = await getBalance(DEFAULT_ADDRESS);
+    return { address: DEFAULT_ADDRESS, balance };
+  }
+}
 
 async function getBalance(address:string) {
   try {
       // Initialize provider
       const baseRpcUrl = `https://base-mainnet.infura.io/v3/${process.env.INFURA_ID}`
       const ethRpcUrl = `https://mainnet.infura.io/v3/${process.env.INFURA_ID}`
-      const baseSepoliaRpcUrl = `https://base-sepolia.infura.io/v3/${process.env.INFURA_ID}`
       const baseProvider = new ethers.JsonRpcProvider(baseRpcUrl);
       const ethProvider = new ethers.JsonRpcProvider(ethRpcUrl);
-      const baseSepoliaProvider = new ethers.JsonRpcProvider(baseSepoliaRpcUrl);
 
       const balanceBaseEth = ethers.formatEther(await baseProvider.getBalance(address));
       const balanceEth = ethers.formatEther(await ethProvider.getBalance(address));
-      const balanceBaseSepolia = ethers.formatEther(await baseSepoliaProvider.getBalance(address));
       
       return { 
         baseEth: Number(balanceBaseEth),
-        eth: Number(balanceEth),
-        baseSepolia: Number(balanceBaseSepolia),
+        eth: Number(balanceEth)
       };
           
   } catch (error) {
@@ -34,14 +53,12 @@ async function getBalance(address:string) {
 
 // State management function
 const getAgentState = async (): Promise<Record<string, any>> => {
-  const balance = await getBalance(WALLET_ADDRESS);
+  const balance = await getBalance(currentAddress);
   return {
-    address: WALLET_ADDRESS,
+    address: currentAddress,
     baseEth: balance["baseEth"],
     eth: balance["eth"],
-    baseSepolia: balance["baseSepolia"],
     status: "seeking",
-    energyX: Math.floor((balance["baseSepolia"]) * 1000),
     energy: Math.floor((balance["baseEth"] + balance["eth"]) * 1000),
     catchphrase:
       "If you don't believe it or don't get it, I don't have the time to try to convince you, sorry.",

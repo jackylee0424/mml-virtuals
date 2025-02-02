@@ -1,4 +1,4 @@
-import { nakamoto_agent } from "./agent";
+import { nakamoto_agent, generateNewCdpAddress } from "./agent";
 import type { Page } from 'puppeteer';
 import { config } from 'dotenv';
 const puppeteer = require("puppeteer");
@@ -224,6 +224,22 @@ async function main() {
       height: 1080,
       deviceScaleFactor: 1
     });
+
+    // Expose generateCdp function to the page
+    await chatPage.exposeFunction('generateCdp', async () => {
+      const result = await generateNewCdpAddress();
+      await chatPage.evaluate((data) => {
+        // Update the chat interface with the new address and balance
+        (window as any).updateChat({
+          address: data.address,
+          baseEth: data.balance.baseEth,
+          eth: data.balance.eth,
+          type: 'system',
+          message: 'Generated new CDP address'
+        }, 'system');
+      }, result);
+    });
+
     await chatPage.goto('file://' + path.resolve('chat.html'));
 
     // Initialize the agent
