@@ -286,7 +286,7 @@
             <div id="address-info">
                 <div id="address-title">
                     <span>Ethereum Address</span>
-                    <span id="eth-balance">0.0 ETH</span>
+                    <span id="eth-balance">0.0 Base ETH</span>
                 </div>
                 <div>
                     <span id="address"></span>
@@ -345,7 +345,7 @@
             }
         }
 
-        function updateAddress(address, eth = null) {
+        function updateAddress(address, eth = null, baseEth = null) {
             if (address === currentAddress) return;
             currentAddress = address;
             
@@ -353,9 +353,9 @@
             addressElement.textContent = address;
             
             // Update ETH balance if provided
-            if (eth !== null) {
-                document.getElementById('eth-balance').textContent = `${eth} ETH`;
-                updateEnergyBar(parseFloat(eth));
+            if (baseEth !== null) {
+                document.getElementById('eth-balance').textContent = `${baseEth} Base ETH`;
+                updateEnergyBar(parseFloat(baseEth));
             }
             
             // Update QR code
@@ -381,7 +381,7 @@
             
             // Check for address in state updates
             if (content.address) {
-                updateAddress(content.address, content.eth || 0);
+                updateAddress(content.address, content.eth, content.baseEth);
             }
             
             let formatted = '';
