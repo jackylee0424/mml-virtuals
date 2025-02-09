@@ -1,6 +1,19 @@
 import { scavenger_agent, generateNewCdpAddress } from "./agent";
 import { helloFunction } from './functions';
 import type { Page } from 'puppeteer';
+
+// Types for player position tracking
+interface UserPosition {
+  userId: string;
+  x: number;
+  y: number;
+  z: number;
+  timestamp: string;
+}
+
+interface WorldData {
+  userPositions: UserPosition[];
+}
 import { config } from 'dotenv';
 const puppeteer = require("puppeteer");
 const path = require("path");
@@ -325,9 +338,7 @@ async function connectToGame(browser: any, maxRetries = 3): Promise<Page | null>
 
       // Try different game URLs
       const gameUrls = [
-        "https://nextlevel.blocksofbitcoin.xyz/#102.599,0.5,20.203,0,0.615,0,0.789,101.583,2.699,24.213,-0.106,-0.121,-0.013,0.987",
-        "https://nextlevel.blocksofbitcoin.xyz/#167.954,0.5,20.069,0,-0.778,0,-0.629,168.574,1.762,24.255,0.005,0.073,0,0.997",
-        "https://nextlevel.blocksofbitcoin.xyz/#521.067,0.5,20.796,0,-0.408,0,-0.913,524.261,2.43,23.502,-0.068,0.419,0.031,0.905"
+        "https://nextlevel.blocksofbitcoin.xyz/#57.516,0.95,3.915,0,1,0,-0.003,57.525,2.44,8.108,-0.023,0.001,0,1"
       ];
 
       for (const url of gameUrls) {
@@ -346,6 +357,49 @@ async function connectToGame(browser: any, maxRetries = 3): Promise<Page | null>
             
             // Short wait for initial load
             await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Set up position tracking
+            await page.exposeFunction('trackPlayerPosition', async (worldData: WorldData) => {
+              console.log('Player positions:', worldData.userPositions);
+              // Here you can add code to store or process the positions
+            });
+
+            // Start tracking player position
+            await page.evaluate(() => {
+              const trackPosition = () => {
+                const hash = window.location.hash.slice(1); // Remove the #
+                if (hash) {
+                  const coords = hash.split(',').map(Number);
+                  if (coords.length >= 3) {
+                    const position = {
+                      x: coords[0],
+                      y: coords[1],
+                      z: coords[2]
+                    };
+                    console.log('Found coordinates in URL:', position);
+                    
+                    // Create WorldData object
+                    const worldData = {
+                      userPositions: [{
+                        userId: 'local_player',
+                        x: position.x,
+                        y: position.y,
+                        z: position.z,
+                        timestamp: new Date().toISOString()
+                      }]
+                    };
+                    
+                    // Send position data back to Node
+                    (window as any).trackPlayerPosition(worldData);
+                  }
+                }
+              };
+
+              // Track position changes
+              window.addEventListener('hashchange', trackPosition);
+              // Initial position check
+              trackPosition();
+            });
           } catch (e) {
             // Ignore navigation errors
             console.log('Navigation had some issues, but continuing...');
