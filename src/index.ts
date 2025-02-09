@@ -402,22 +402,35 @@ async function connectToGame(browser: any, maxRetries = 3): Promise<Page | null>
               console.log('Player positions:', worldData.userPositions);
               if (chatPage) {
                 const pos = worldData.userPositions[0];
-                await chatPage.evaluate(({x, y, z}) => {
+                await chatPage.evaluate((pos) => {
+                  const MAP_SIZE = 100;
+                  const WORLD_SIZE = 600;
+
                   // Update text display
                   const coordsText = document.querySelector('#coordinates > div:first-child');
                   if (coordsText) {
-                    coordsText.textContent = `Position: X:${x.toFixed(2)} Y:${y.toFixed(2)} Z:${z.toFixed(2)}`;
+                    coordsText.textContent = `Position: X:${pos.x.toFixed(2)} Y:${pos.y.toFixed(2)} Z:${pos.z.toFixed(2)}`;
                   }
                   
-                  // Update dot on minimap
+                  // Update player dot on minimap
                   const playerDot = document.getElementById('playerDot');
                   if (playerDot) {
-                    const MAP_SIZE = 100;
-                    const WORLD_SIZE = 600;
-                    const mapX = (x / WORLD_SIZE * MAP_SIZE) + (MAP_SIZE / 2);
-                    const mapZ = (z / WORLD_SIZE * MAP_SIZE) + (MAP_SIZE / 2);
+                    const mapX = (pos.x / WORLD_SIZE * MAP_SIZE) + (MAP_SIZE / 2);
+                    const mapZ = (pos.z / WORLD_SIZE * MAP_SIZE) + (MAP_SIZE / 2);
                     playerDot.style.left = `${mapX}px`;
                     playerDot.style.top = `${mapZ}px`;
+                  }
+
+                  // Position target dot
+                  const targetDot = document.getElementById('targetDot');
+                  if (targetDot) {
+                    const targetX = 57;
+                    const targetY = 0;
+                    const targetZ = 1.5;
+                    const targetMapX = (targetX / WORLD_SIZE * MAP_SIZE) + (MAP_SIZE / 2);
+                    const targetMapZ = (targetZ / WORLD_SIZE * MAP_SIZE) + (MAP_SIZE / 2);
+                    targetDot.style.left = `${targetMapX}px`;
+                    targetDot.style.top = `${targetMapZ}px`;
                   }
                 }, pos);
               }
@@ -430,26 +443,17 @@ async function connectToGame(browser: any, maxRetries = 3): Promise<Page | null>
                 if (hash) {
                   const coords = hash.split(',').map(Number);
                   if (coords.length >= 3) {
-                    const position = {
-                      x: coords[0],
-                      y: coords[1],
-                      z: coords[2]
-                    };
-                    console.log('Found coordinates in URL:', position);
-                    
-                    // Create WorldData object
                     const worldData = {
                       userPositions: [{
                         userId: 'local_player',
-                        x: position.x,
-                        y: position.y,
-                        z: position.z,
+                        x: coords[0],
+                        y: coords[1],
+                        z: coords[2],
                         timestamp: new Date().toISOString()
                       }]
                     };
-                    
-                    // Send position data back to Node
-                    (window as any).trackPlayerPosition(worldData);
+                    console.log('Found coordinates in URL:', worldData);
+                    window.trackPlayerPosition(worldData);
                   }
                 }
               };
