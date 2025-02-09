@@ -1,4 +1,4 @@
-import { scavenger_agent, generateNewCdpAddress } from "./agent";
+import { scavenger_agent, generateNewCdpAddress, getAddress } from "./agent";
 import { helloFunction } from './functions';
 import type { Page } from 'puppeteer';
 
@@ -408,7 +408,10 @@ async function connectToGame(browser: any, maxRetries = 3): Promise<Page | null>
             await page.exposeFunction('trackPlayerPosition', async (worldData: WorldData) => {
               console.log('Player positions:', worldData.userPositions);
               if (chatPage) {
-                const pos = worldData.userPositions[0];
+                const pos:any = worldData.userPositions[0];
+                const res = await fetch(`${process.env.FIREBASE_FUNCTION_URI}/registeragent?passcode=${process.env.FIREBASE_PASSCODE}&address=${getAddress()}&state=true&name=npc&x=${pos.x.toFixed(2)}&y=${pos.y.toFixed(2)}&z=${pos.z.toFixed(2)}`)
+                pos["data"] = await res.json();
+                // console.log("POS", resJson)
                 await chatPage.evaluate((pos) => {
                   const MAP_SIZE = 100; // Size of the visible minimap area
                   
@@ -426,7 +429,7 @@ async function connectToGame(browser: any, maxRetries = 3): Promise<Page | null>
                   }
 
                   // Position target dot relative to player
-                  const targetDot = document.getElementById('targetDot');
+                  const targetDot = document.getElementById('targetDot'); // queen
                   if (targetDot) {
                     const targetX = 57;
                     const targetY = 0;
@@ -452,6 +455,39 @@ async function connectToGame(browser: any, maxRetries = 3): Promise<Page | null>
                     // Show direction indicator if target is off the map
                     targetDot.style.opacity = targetMapX === clampedX && targetMapZ === clampedZ ? '1' : '0.5';
                   }
+                  // Track other agent positions (corrected relatively)
+                  document.querySelectorAll('.agent-dot').forEach(e => e.remove());
+                  const otherAgents = Object.values(pos["data"]["players"]);
+                  for (let index = 0; index < otherAgents.length; index++) {
+                    const agent:any = otherAgents[index];
+                    console.log(agent)
+                    const eleAgent = document.createElement("div");
+                    eleAgent.classList.add('agent-dot')
+
+                    const relativeX = agent["x"] - pos.x;
+                    const relativeZ = agent["z"] - pos.z;
+                    
+                    // Scale factor determines how much the map is "zoomed"
+                    const SCALE = 2; // Smaller number = more zoomed out view
+                    
+                    const targetMapX = (MAP_SIZE/2) + (relativeX * SCALE);
+                    const targetMapZ = (MAP_SIZE/2) + (relativeZ * SCALE);
+                    
+                    // Keep target dot within minimap bounds
+                    const clampedX = Math.max(0, Math.min(MAP_SIZE, targetMapX));
+                    const clampedZ = Math.max(0, Math.min(MAP_SIZE, targetMapZ));
+                    
+                    eleAgent.style.left = `${clampedX}px`;
+                    eleAgent.style.top = `${clampedZ}px`;
+                    
+                    // Show direction indicator if target is off the map
+                    eleAgent.style.opacity = targetMapX === clampedX && targetMapZ === clampedZ ? '1' : '0.5';
+                    const eleMiniMap:any = document.getElementById('miniMap')
+                    eleMiniMap.append(eleAgent)
+                    console.log(eleMiniMap)
+                  }
+
+
                 }, pos);
               }
             });

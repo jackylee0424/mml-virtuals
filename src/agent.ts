@@ -20,6 +20,10 @@ export function consumeEnergyX () {
 const DEFAULT_ADDRESS = "0x92aA6ab29370215a0C85B757d27CC728584c86F1";
 let currentAddress = DEFAULT_ADDRESS;
 
+export function getAddress() {
+  return currentAddress
+}
+
 // Configure CDP Wallet Provider
 const config = {
   apiKeyName: process.env.CDP_API_KEY,
