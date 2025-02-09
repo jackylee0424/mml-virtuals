@@ -14,6 +14,13 @@ interface UserPosition {
 interface WorldData {
   userPositions: UserPosition[];
 }
+
+// Extend Window interface
+declare global {
+  interface Window {
+    trackPlayerPosition: (data: WorldData) => void;
+  }
+}
 import { config } from 'dotenv';
 import express from 'express';
 import { Server } from 'socket.io';
@@ -403,34 +410,47 @@ async function connectToGame(browser: any, maxRetries = 3): Promise<Page | null>
               if (chatPage) {
                 const pos = worldData.userPositions[0];
                 await chatPage.evaluate((pos) => {
-                  const MAP_SIZE = 100;
-                  const WORLD_SIZE = 600;
-
+                  const MAP_SIZE = 100; // Size of the visible minimap area
+                  
                   // Update text display
                   const coordsText = document.querySelector('#coordinates > div:first-child');
                   if (coordsText) {
                     coordsText.textContent = `Position: X:${pos.x.toFixed(2)} Y:${pos.y.toFixed(2)} Z:${pos.z.toFixed(2)}`;
                   }
                   
-                  // Update player dot on minimap
+                  // Keep player dot centered
                   const playerDot = document.getElementById('playerDot');
                   if (playerDot) {
-                    const mapX = (pos.x / WORLD_SIZE * MAP_SIZE) + (MAP_SIZE / 2);
-                    const mapZ = (pos.z / WORLD_SIZE * MAP_SIZE) + (MAP_SIZE / 2);
-                    playerDot.style.left = `${mapX}px`;
-                    playerDot.style.top = `${mapZ}px`;
+                    playerDot.style.left = `${MAP_SIZE/2}px`;
+                    playerDot.style.top = `${MAP_SIZE/2}px`;
                   }
 
-                  // Position target dot
+                  // Position target dot relative to player
                   const targetDot = document.getElementById('targetDot');
                   if (targetDot) {
                     const targetX = 57;
                     const targetY = 0;
                     const targetZ = 1.5;
-                    const targetMapX = (targetX / WORLD_SIZE * MAP_SIZE) + (MAP_SIZE / 2);
-                    const targetMapZ = (targetZ / WORLD_SIZE * MAP_SIZE) + (MAP_SIZE / 2);
-                    targetDot.style.left = `${targetMapX}px`;
-                    targetDot.style.top = `${targetMapZ}px`;
+                    
+                    // Calculate relative position from player
+                    const relativeX = targetX - pos.x;
+                    const relativeZ = targetZ - pos.z;
+                    
+                    // Scale factor determines how much the map is "zoomed"
+                    const SCALE = 2; // Smaller number = more zoomed out view
+                    
+                    const targetMapX = (MAP_SIZE/2) + (relativeX * SCALE);
+                    const targetMapZ = (MAP_SIZE/2) + (relativeZ * SCALE);
+                    
+                    // Keep target dot within minimap bounds
+                    const clampedX = Math.max(0, Math.min(MAP_SIZE, targetMapX));
+                    const clampedZ = Math.max(0, Math.min(MAP_SIZE, targetMapZ));
+                    
+                    targetDot.style.left = `${clampedX}px`;
+                    targetDot.style.top = `${clampedZ}px`;
+                    
+                    // Show direction indicator if target is off the map
+                    targetDot.style.opacity = targetMapX === clampedX && targetMapZ === clampedZ ? '1' : '0.5';
                   }
                 }, pos);
               }
