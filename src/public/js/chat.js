@@ -61,3 +61,35 @@ socket.on('npc_talk', (data) => {
 socket.on('system_message', (data) => {
     addMessage(data, 'system');
 });
+
+// Listen for player position updates
+// Constants for map scaling
+const MAP_SIZE = 100; // Size of mini-map in pixels
+const WORLD_SIZE = 600; // Adjusted world size based on observed coordinates
+
+function updatePlayerPosition(x, z) {
+    const playerDot = document.getElementById('playerDot');
+    if (!playerDot) return;
+
+    // Convert world coordinates to mini-map coordinates (0-100)
+    // Adjust the scaling to center around common coordinates
+    const mapX = (x / WORLD_SIZE * MAP_SIZE) + (MAP_SIZE / 2);
+    const mapZ = (z / WORLD_SIZE * MAP_SIZE) + (MAP_SIZE / 2);
+
+    console.log('Updating dot position:', { mapX, mapZ });
+    playerDot.style.left = `${mapX}px`;
+    playerDot.style.top = `${mapZ}px`;
+}
+
+// Listen for player position updates
+socket.on('player_position', (data) => {
+    console.log('Received position update:', data);
+    const coords = data.userPositions[0];
+    const coordsText = document.querySelector('#coordinates > div:first-child');
+    if (coordsText) {
+        coordsText.textContent = `Position: X:${coords.x.toFixed(2)} Y:${coords.y.toFixed(2)} Z:${coords.z.toFixed(2)}`;
+    }
+    
+    // Update player dot position on mini-map
+    updatePlayerPosition(coords.x, coords.z);
+});

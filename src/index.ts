@@ -15,9 +15,48 @@ interface WorldData {
   userPositions: UserPosition[];
 }
 import { config } from 'dotenv';
+import express from 'express';
+import { Server } from 'socket.io';
+import http from 'http';
+import { Request, Response } from 'express';
+import { Socket } from 'socket.io';
 const puppeteer = require("puppeteer");
 const path = require("path");
 const fetch = require('node-fetch');
+
+// Create Express app and HTTP server
+const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.IO with CORS enabled
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve chat.html
+app.get('/', (req: Request, res: Response) => {
+    res.sendFile(path.join(__dirname, '..', 'chat.html'));
+});
+
+// Socket.IO connection handling
+io.on('connection', (socket: Socket) => {
+    console.log('Client connected');
+    socket.on('disconnect', () => {
+        console.log('Client disconnected');
+    });
+});
+
+// Start the server before anything else
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
 
 config();
 
@@ -358,10 +397,30 @@ async function connectToGame(browser: any, maxRetries = 3): Promise<Page | null>
             // Short wait for initial load
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            // Set up position tracking
+            // Set up position tracking to update chat window directly
             await page.exposeFunction('trackPlayerPosition', async (worldData: WorldData) => {
               console.log('Player positions:', worldData.userPositions);
-              // Here you can add code to store or process the positions
+              if (chatPage) {
+                const pos = worldData.userPositions[0];
+                await chatPage.evaluate(({x, y, z}) => {
+                  // Update text display
+                  const coordsText = document.querySelector('#coordinates > div:first-child');
+                  if (coordsText) {
+                    coordsText.textContent = `Position: X:${x.toFixed(2)} Y:${y.toFixed(2)} Z:${z.toFixed(2)}`;
+                  }
+                  
+                  // Update dot on minimap
+                  const playerDot = document.getElementById('playerDot');
+                  if (playerDot) {
+                    const MAP_SIZE = 100;
+                    const WORLD_SIZE = 600;
+                    const mapX = (x / WORLD_SIZE * MAP_SIZE) + (MAP_SIZE / 2);
+                    const mapZ = (z / WORLD_SIZE * MAP_SIZE) + (MAP_SIZE / 2);
+                    playerDot.style.left = `${mapX}px`;
+                    playerDot.style.top = `${mapZ}px`;
+                  }
+                }, pos);
+              }
             });
 
             // Start tracking player position
